@@ -1,6 +1,8 @@
 const jwt = require('jsonwebtoken');
 const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET;
 const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
+require('dotenv').config();
+
 
 async function setUser(user){
    const accessToken =   jwt.sign({
@@ -27,6 +29,8 @@ async function getUser(token){
 }
 
 async function handleRefreshTokens(req,res){
+    const isProd = process.env.NODE_ENV === "production";
+
     const refreshToken = req.cookies.refresh;
 
     if (!refreshToken) {
@@ -41,15 +45,15 @@ async function handleRefreshTokens(req,res){
            return  res.status(401).json({mssg:"Unauthorized access !"});
         }
     }catch(err){
-        res.status(401).json({mssg:err});
+        return res.status(401).json({mssg:err});
     }
 
     try{
         const newAccessToken = jwt.sign({_id:user._id,email:user.email},ACCESS_SECRET,{expiresIn: "60m"});
         res.cookie("uid",newAccessToken , {
-        // httpOnly: true,         
-        secure: true,           
-        sameSite: "none",    
+        httpOnly: true,
+            secure: isProd,
+            sameSite: isProd ? "none" : "lax",
         maxAge: 60 * 60 * 1000  // 1 hour
     });
 
@@ -57,7 +61,6 @@ async function handleRefreshTokens(req,res){
     }
     catch(err){
         return res.status(401).json({mssg:err});
-
     }
 
 

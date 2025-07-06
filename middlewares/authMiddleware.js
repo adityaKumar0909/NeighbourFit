@@ -1,27 +1,38 @@
 const express = require("express");
-const {getUser} = require('../services/auth');
+const { getUser, handleRefreshTokens } = require('../services/auth');
 
-async function requireAuth(req,res,next){
-console.log("Incoming cookies:", req.cookies);
-console.log("Access received:", req.cookies?.uid);
-console.log("Refresh recieved: ",req.cookies?.refresh)
+async function requireAuth(req, res, next) {
+    try {
+        const accessToken = req.cookies?.uid;
+        
+        if (!accessToken) {
+            if (req.cookies?.refresh) {
+                return res.status(401).json({
+                    message: "Access token missing",
+                    shouldRefresh: true
+                });
+            }
+            return res.status(401).json({ message: "Authentication required . Please login !" });
+        }
 
+        const user = await getUser(accessToken);
+        
+        if (!user) {
+            if (req.cookies?.refresh) {
+                return res.status(401).json({
+                    message: "Access token expired",
+                    shouldRefresh: true
+                });
+            }
+            return res.status(401).json({ message: "Invalid token" });
+        }
 
-    const userID= req.cookies?.uid;
-    if(!userID){
-        //REDIRECT TO REFRESH TOKEN 
-        return res.status(400).json({mssg:"No token provided"})
+        req.user = user;
+        next();
+    } catch (error) {
+        console.error('Authentication error:', error);
+        return res.status(500).json({ message: "Authentication failed" });
     }
-
-    const user = await getUser(userID);
-    if (!user) {
-        //REDIRECT TO LOGIN
-        return res.status(401).json({ message: "Invalid or expired token" });
-    }
-    req.user = user;
-    // console.log("Added user in the req body");
-    console.log("Giving access to dashboard API")
-    next();
 }
 
-module.exports = requireAuth
+module.exports = requireAuth;

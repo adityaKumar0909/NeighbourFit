@@ -25,7 +25,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use('/',userRoutes);
 app.use('/admin',adminRoutes);
-app.use('/dashboard',dashboardRoutes)
+app.use('/dashboard',requireAuth,dashboardRoutes)
 
 app.listen(PORT, () => {
     console.log('Server is running on port 5000');

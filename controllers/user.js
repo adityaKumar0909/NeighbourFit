@@ -3,6 +3,9 @@ const {sendOtpEmail} = require('../utils/sendEmail');
 const sendEmail = require('../utils/sendEmail');
 const {setUser} = require('../services/auth');
 const bcrypt = require('bcrypt');
+const {getUser} = require('../services/auth')
+require('dotenv').config();
+
 
 async function handleSignup(req,res){
 
@@ -119,6 +122,8 @@ async function handleResetPasswordVerifyOTP(req, res) {
 }
 
 async function handleLogin(req,res){
+    const isProd = true;
+
     const body = req.body;
     if(!body.email || !body.password){ 
         return res.status(400).json({message:"Email or password missing from request"});
@@ -139,16 +144,16 @@ async function handleLogin(req,res){
 
     const {accessToken,refreshToken} = await setUser(user);
     res.cookie("uid", accessToken, {
-        httpOnly: true,         
-        // secure: true,           
-        sameSite: "strict",     
+        httpOnly: true,
+        secure: isProd,
+        sameSite: isProd ? "none" : "lax",
         maxAge: 60 * 60 * 1000  // 1 hour
     });
 
      res.cookie("refresh", refreshToken, {
-        httpOnly: true,         
-        secure: true,           
-        sameSite: "none",
+        httpOnly: true,
+         secure: isProd,
+         sameSite: isProd ? "none" : "lax",
         maxAge: 7*24*60 * 60 * 1000  // 7 days
     });
 
@@ -157,6 +162,52 @@ async function handleLogin(req,res){
 
 }
 
+async function handleAuthUser(req,res){
+
+    try{
+        const accessToken = req.cookies?.uid;
+
+        if(!accessToken){
+            if(req.cookies.refresh){
+                return res.status(200).json({
+                    message:"User logged in"
+                });
+            }
+            return res.status(400).json({message:"Auth required ! Log in again"})
+        }
+
+        const user = await getUser(accessToken);
+        if (!user) {
+        return res.status(401).json({ message: "Invalid token" });
+         }
+
+        return res.status(200).json({ loggedIn: true, user });
+        
+    }
+    catch(error){
+        console.error("Authentication error :",error);
+        return res.status(500).json({message:"Authentication failed"});
+    }
+
+}
+
+async function handleLogOut(req,res){
+
+    const isProd = process.env.NODE_ENV === "production";
+    res.clearCookie("uid",{
+         httpOnly: true,
+        secure: isProd,
+        sameSite: isProd ? "none" : "lax"
+    });
+    res.clearCookie("refresh", {
+        httpOnly: true,
+        secure: isProd,
+        sameSite: isProd ? "none" : "lax"
+    });
+
+    return res.status(200).json({ message: "Logged out" });
+}
 
 
-module.exports = {handleSignup, handleVerifyOTP,handleResetPassword,handleResetPasswordVerifyOTP,handleLogin};
+
+module.exports = {handleSignup, handleVerifyOTP,handleResetPassword,handleResetPasswordVerifyOTP,handleLogin,handleAuthUser,handleLogOut};
