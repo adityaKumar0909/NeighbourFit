@@ -8,6 +8,7 @@ const connectToMongoDB = require('./connection');
 const requireAuth = require('./middlewares/authMiddleware');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
+const sendEmail = require('./utils/sendEmail');
 
 const PORT = process.env.PORT || 5000
 
@@ -26,6 +27,15 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/',userRoutes);
 app.use('/admin',adminRoutes);
 app.use('/dashboard',requireAuth,dashboardRoutes)
+app.get('/test-email', async (req, res) => {
+  try {
+    await sendEmail('youremail@example.com', 'Test Subject', 'Test message: ', '987654');
+    res.send('Test email sent!');
+  } catch (err) {
+    res.status(500).send('Failed to send email.');
+  }
+});
+
 
 app.listen(PORT, () => {
     console.log('Server is running on port 5000');
