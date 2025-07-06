@@ -1,28 +1,32 @@
-const axios = require('axios');
+const nodemailer = require('nodemailer');
 require('dotenv').config();
 
-async function sendEmail(to, subject, text, otp) {
-    const serviceID = process.env.EMAILJS_SERVICE_ID;
-    const templateID = process.env.EMAILJS_TEMPLATE_ID;
-    const userID = process.env.EMAILJS_PUBLIC_KEY;
 
-    const templateParams = {
-        email: to,
-        passcode:otp,
-    };
+const transporter = nodemailer.createTransport({
+    service:'gmail',
+    auth:{
+        user:process.env.EMAIL_USER,
+        pass:process.env.EMAIL_PASS
+    }
+})
 
-    try {
-        const response = await axios.post('https://api.emailjs.com/api/v1.0/email/send', {
-            service_id: serviceID,
-            template_id: templateID,
-            user_id: userID,
-            template_params: templateParams,
-        });
+async function sendEmail(to, subject, text,otp) {
+    const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to:to,
+        subject: subject,
+        text: text + otp
+    }
 
-        console.log('✅ Email sent successfully', response.data);
-    } catch (err) {
-        console.error('❌ Error sending email:', err.response?.data || err.message);
+    try{
+        await transporter.sendMail(mailOptions);
+        console.log('Email sent successfully');
+    }catch(err){
+        console.error('Error sending email:', err);
     }
 }
 
 module.exports = sendEmail;
+
+
+//TODO - Use mailgun instead of gmail (to avoid mails landing in spam )
